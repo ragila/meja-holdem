@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Meja Hold'em</title>
+<style>
+:root{
+  --ink:#1c1612;--paper:#f1e7cf;--paper-d:#d9c9a3;--baize:#1e5240;--baize-d:#133628;
+  --rail:#3b2417;--red:#c8402a;--gold:#e0a82e;--dim:#a99b7f;--sw:90px;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --backpat:repeating-linear-gradient(45deg,transparent 0 4px,#f1e7cf30 4px 5px),repeating-linear-gradient(-45deg,transparent 0 4px,#f1e7cf30 4px 5px),#c8402a;
+  --grain:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .45 -.16'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;overflow:hidden;color:var(--paper);font:15px/1.25 var(--serif);
+  background:var(--grain),radial-gradient(120% 90% at 50% 30%,#2b1e14,#120d09 70%)}
+button,input{font:inherit;color:inherit}
+.lbl,.kicker,.fine,label,.sub,.tag,.btn,#top{font-family:var(--mono);text-transform:uppercase;letter-spacing:.1em}
+
+/* ---------- join: tiket ---------- */
+#join{display:grid;place-items:center;height:100dvh;padding:24px}
+.ticket{position:relative;width:min(340px,100%);background:var(--grain),var(--paper);color:var(--ink);padding:26px 26px 20px;transform:rotate(-1.2deg);box-shadow:6px 8px 0 #000a}
+.ticket::before,.ticket::after{content:"";position:absolute;top:58%;width:22px;height:22px;border-radius:50%;background:#1c140e}
+.ticket::before{left:-11px}.ticket::after{right:-11px}
+.kicker,.fine,label{font-size:10.5px;color:#1c1612b3}
+.ticket h1{margin:10px 0 8px;font-size:56px;line-height:.9;font-weight:700;letter-spacing:-.025em}
+.ticket h1 em{font-weight:400;color:var(--red)}
+.suits{display:flex;gap:12px;font-size:22px;margin-bottom:24px}.suits .r{color:var(--red)}
+#nm{display:block;width:100%;border:0;border-bottom:2px solid var(--ink);border-radius:0;background:transparent;padding:6px 0;margin:2px 0 20px;font-size:24px;font-style:italic;color:var(--ink);outline:0}
+#nm::placeholder{color:#1c161255}
+#nm:focus{border-bottom-color:var(--red)}
+#rm{display:block;width:100%;border:0;border-bottom:2px solid var(--ink);border-radius:0;background:transparent;padding:6px 0;margin:2px 0 20px;font:700 19px var(--mono);letter-spacing:.08em;color:var(--ink);outline:0}
+#rm:focus{border-bottom-color:var(--red)}
+#info{max-width:calc(50% - 28px);overflow:hidden;white-space:nowrap;text-overflow:ellipsis} /* jangan menabrak dealer di tengah */
+#info a{color:var(--gold);cursor:pointer;text-decoration:underline dotted;text-underline-offset:3px}
+.fine{margin-top:14px;text-align:center;font-size:9.5px}
+
+/* ---------- tombol ---------- */
+.btn{border:2px solid var(--ink);background:var(--c,transparent);color:var(--paper);font-weight:700;font-size:13px;padding:13px 10px;cursor:pointer;flex:1;box-shadow:3px 3px 0 var(--paper-d);transition:transform .08s,box-shadow .08s}
+.btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--paper-d)}
+.btn.red{--c:var(--red)}.btn.green{--c:#2f7a5c}.btn.gold{--c:var(--gold);color:var(--ink)}
+.btn.ghost{border-color:var(--paper-d);box-shadow:none}
+.ticket .btn{width:100%;--c:var(--red);box-shadow:3px 3px 0 var(--ink)}
+
+/* ---------- game ---------- */
+#game{position:relative;display:flex;flex-direction:column;height:100dvh;max-width:980px;margin:auto}
+#top{position:relative;display:flex;justify-content:space-between;align-items:flex-start;min-height:70px;padding:12px 14px 0;font-size:11px;color:var(--dim)}
+#top b{color:var(--paper)}
+#top button{background:none;border:1px solid #a99b7f66;padding:4px 8px;font:inherit;text-transform:inherit;letter-spacing:inherit;color:var(--dim);cursor:pointer}
+#top .btns{display:flex;gap:6px}
+#top button.off{text-decoration:line-through;opacity:.55}
+#table{position:relative;flex:1;min-height:0}
+#felt{position:absolute;inset:18px 2% 3% 2%;border-radius:9999px;overflow:hidden;
+  background:var(--grain),radial-gradient(ellipse at 50% 40%,#2b6a52,var(--baize) 55%,var(--baize-d));
+  border:11px solid var(--rail);box-shadow:0 0 0 2px #000a,inset 0 12px 40px #0009,0 14px 40px #000c}
+#felt::before{content:"";position:absolute;inset:6px;border:1.5px solid #f1e7cf40;border-radius:inherit}
+#felt::after{content:"Hold'em";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:clamp(54px,13vw,120px);font-style:italic;letter-spacing:-.03em;color:#f1e7cf0d;white-space:nowrap}
+#center{position:absolute;left:50%;top:52%;transform:translate(-50%,-50%);width:76%}
+#board{display:flex;gap:5px;justify-content:center}
+#pot{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:10px;min-height:22px}
+#pot .lbl{font-size:10.5px;color:var(--paper-d)}
+#pot .num{font-size:24px;font-weight:700;font-style:italic;color:var(--gold);font-variant-numeric:tabular-nums;line-height:1}
+#win{position:absolute;left:50%;top:100%;margin-top:14px;transform:translateX(-50%);width:max-content;max-width:92vw;z-index:5}
+.stamp{display:block;transform:rotate(-2.5deg);margin:0 auto 6px;padding:5px 14px;text-align:center;border:3px double var(--paper);background:#0b0a08b3;color:var(--paper);font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;animation:stamp .35s cubic-bezier(.2,1.6,.4,1) .9s both}
+.stamp em{font-family:var(--serif);font-size:17px;font-style:italic;letter-spacing:0;text-transform:none;color:var(--gold)}
+@keyframes stamp{from{opacity:0;transform:rotate(-9deg) scale(1.9)}}
+
+/* ---------- dealer ---------- */
+#dealer{position:absolute;left:50%;bottom:-20px;width:112px;transform:translateX(-50%);overflow:visible;pointer-events:none}
+#dealer .body{animation:breathe 3.4s ease-in-out infinite}
+#dealer .hairB,#dealer .hairF{transform-origin:60px 10px;animation:sway 6s ease-in-out infinite}
+#dealer .head{transform-origin:60px 58px;animation:tilt 7s ease-in-out infinite}
+#dealer .eyeL,#dealer .eyeR{animation:blink 5.2s infinite}
+#dealer .eyeL,#dealer .wkL{transform-origin:53.4px 35.6px}
+#dealer .eyeR{transform-origin:66.6px 35.6px;animation-delay:.04s}
+#dealer .wkL{animation:wink 9s ease-in-out 3s infinite}
+#dealer .arm{transform-origin:94px 74px;transform:translateY(26px)} /* diam di balik meja; muncul saat membagi kartu */
+#dealer .lips{transform-origin:60px 48.5px}
+#dealer.deal .arm{animation:flick .43s ease-in-out var(--n,1)}
+#dealer.deal .head{animation:nod .43s ease-in-out var(--n,1)}
+#dealer.happy .lips{transform:scale(1.25,1.5)}
+#dealer.happy .wkL{animation:winkHold 1.3s ease-in-out}
+@keyframes breathe{50%{transform:translateY(1.2px)}}
+@keyframes sway{50%{transform:rotate(.9deg)}}
+@keyframes tilt{0%,100%{transform:rotate(-1.4deg)}50%{transform:rotate(1.4deg)}}
+@keyframes blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.08)}}
+@keyframes wink{0%,92%,100%{transform:scaleY(1)}95%,98%{transform:scaleY(.07)}}
+@keyframes winkHold{0%,100%{transform:scaleY(1)}20%,75%{transform:scaleY(.07)}}
+@keyframes flick{0%{transform:translateY(26px) rotate(0)}22%{transform:translateY(0) rotate(38deg)}45%{transform:translateY(0) rotate(80deg)}65%{transform:translateY(0) rotate(62deg)}85%{transform:translateY(0) rotate(88deg)}100%{transform:translateY(26px) rotate(0)}}
+@keyframes nod{40%{transform:rotate(-2.5deg) translateY(1px)}}
+
+/* ---------- kartu ---------- */
+.card{--rest:rotate(0deg);position:relative;flex:none;width:42px;height:60px;border-radius:5px;background:var(--grain),#f7f0dc;color:var(--ink);border:1px solid #1c161266;box-shadow:0 2px 0 #0007,0 8px 12px -6px #000c;font-family:var(--serif);transform:var(--rest)}
+.card.r{color:#b8321f}
+.card b{position:absolute;top:3px;left:5px;font-size:17px;line-height:1;font-weight:700;letter-spacing:-.04em}
+.card i{position:absolute;top:21px;left:5px;font-style:normal;font-size:13px;line-height:1}
+.card::after{content:attr(data-s);position:absolute;right:4px;bottom:1px;font-size:30px;line-height:1}
+.card.back{background:var(--backpat);border:3px solid #f7f0dc}
+.card.back::after{content:none}
+.card.empty{background:none;border:1.5px dashed #f1e7cf40;box-shadow:none}
+.card.empty::after{content:none}
+/* animasi: kartu terbang dari dealer (fly), lalu terbalik dari punggung ke muka (flip / reveal) */
+.card.fly{--t:.9s;animation:fly var(--t) cubic-bezier(.25,.8,.3,1) both}
+.card.fly.flip{animation:fly var(--t) cubic-bezier(.25,.8,.3,1) both,flip var(--t) ease-in-out both}
+.card.reveal{--t:.6s;animation:flip var(--t) ease-in-out both}
+.card.flip::before,.card.reveal::before{content:"";position:absolute;inset:-1px;z-index:3;border-radius:inherit;background:var(--backpat);border:3px solid #f7f0dc;animation:cover var(--t) both;animation-delay:inherit}
+@keyframes fly{
+  0%{opacity:0;translate:var(--dx,0px) var(--dy,-70px);scale:.4;rotate:-35deg}
+  14%{opacity:1}
+  45%,100%{opacity:1;translate:0 0;scale:1;rotate:0deg}
+}
+@keyframes flip{
+  0%,40%{transform:perspective(700px) var(--rest) rotateY(0deg)}
+  60%{transform:perspective(700px) var(--rest) rotateY(90deg)}
+  60.01%{transform:perspective(700px) var(--rest) rotateY(-90deg)}
+  100%{transform:perspective(700px) var(--rest) rotateY(0deg)}
+}
+@keyframes cover{0%,60%{opacity:1}60.01%,100%{opacity:0}}
+
+/* ---------- kursi ---------- */
+.seat{position:absolute;transform:translate(-50%,-50%);width:var(--sw);display:flex;flex-direction:column;align-items:center}
+.seat.turn{z-index:4}
+.seat.dim{opacity:.5}
+.seat .cards{display:flex;gap:2px;margin-bottom:-4px;z-index:1}
+.seat .card{width:26px;height:37px;border-radius:3px;box-shadow:0 1px 0 #0007}
+.seat .card b{top:2px;left:3px;font-size:12px}
+.seat .card i{top:15px;left:3px;font-size:10px}
+.seat .card::after{content:none}
+.seat .card.back{border-width:2px}
+.seat .card::before{border-width:2px}
+.plate{position:relative;width:100%;background:var(--grain),var(--paper);color:var(--ink);border:2px solid var(--ink);border-radius:3px;padding:4px 7px 5px;box-shadow:3px 3px 0 #000b}
+.seat.me .plate{background:var(--grain),var(--ink);color:var(--paper);border-color:var(--paper-d)}
+.seat.turn .plate{outline:3px solid var(--gold);outline-offset:2px}
+.seat.won .plate{background:var(--grain),#cfe3b0;color:var(--ink)}
+.nm{font-weight:700;font-size:13px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crown{color:#a8741a;margin-right:3px}
+.seat.me .crown{color:var(--gold)}
+.ch{font-family:var(--mono);font-weight:700;font-size:12px;font-variant-numeric:tabular-nums}
+.r3{min-height:14px;margin-top:2px;font-size:11px;line-height:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hand{font-style:italic;opacity:.8}
+.tag{display:inline-block;transform:rotate(-3deg);border:1.5px solid currentColor;padding:0 4px;font-size:9px;line-height:12px;font-weight:700;color:currentColor}
+.tag.red{color:var(--red)}.tag.grn{color:#1e6b3c}
+.seat.me .tag.red{color:#ff8a70}
+.dealer{position:absolute;right:-12px;top:-12px;width:21px;height:21px;border-radius:50%;background:var(--paper);color:var(--ink);border:2px solid var(--ink);font:700 11px/17px var(--mono);text-align:center;z-index:3;box-shadow:1px 1px 0 #000}
+.tm{position:absolute;left:0;right:0;bottom:0;height:3px;background:#1c161233}
+.tm b{display:block;height:100%;background:var(--red)}
+
+/* ---------- chip ---------- */
+.bet{position:absolute;transform:translate(-50%,-50%);display:flex;align-items:flex-end;gap:2px}
+.bet>span{margin-left:4px;font-family:var(--mono);font-weight:700;font-size:12px;text-shadow:0 1px 2px #000}
+.stk{display:inline-flex;flex-direction:column-reverse;padding-top:16px}
+.chip{flex:none;display:block;position:relative;width:22px;height:22px;margin-top:-18px;border-radius:50%;border:1.5px solid #0006;
+  background:repeating-conic-gradient(var(--c) 0 20deg,#f4ecd8 20deg 40deg);box-shadow:0 1px 0 #000a}
+.chip::after{content:"";position:absolute;inset:4px;border-radius:50%;background:var(--c);border:1px solid #f4ecd8cc}
+
+/* ---------- panel bawah ---------- */
+#panel{padding:10px 14px calc(14px + env(safe-area-inset-bottom));background:var(--grain),#1a1510;border-top:3px double #e0a82e80}
+#me{position:relative;display:flex;align-items:center;gap:6px;min-height:100px}
+#mine{position:relative;display:flex;flex:none;padding:8px 16px 0 10px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+#eye{position:absolute;right:0;top:4px;width:36px;height:36px;padding:0;border-radius:50%;border:1.5px solid #f1e7cf66;background:#1a1510;color:var(--paper);display:grid;place-items:center;cursor:pointer;z-index:2}
+#eye svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#eye .off{display:none}
+#eye.on{background:var(--gold);color:var(--ink);border-color:var(--ink)}
+#eye.on .open{display:none}#eye.on .off{display:block}
+.hint{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim);margin-top:6px}
+#mine .card{width:64px;height:92px;border-radius:7px}
+#mine .card b{top:5px;left:7px;font-size:25px}
+#mine .card i{top:32px;left:7px;font-size:19px}
+#mine .card::after{font-size:46px;right:6px;bottom:2px}
+#mine .card:nth-child(1){--rest:rotate(-6deg) translateX(8px)}
+#mine .card:nth-child(2){--rest:rotate(5deg) translate(-8px,3px)}
+#msg{flex:1;min-width:0;padding-right:44px}
+.hn{font-size:27px;font-style:italic;font-weight:700;color:var(--gold);line-height:1;margin-bottom:6px}
+.sub{font-size:11px;color:var(--paper-d)}
+#ctl{display:flow-root;min-height:158px} /* flow-root: margin baris tombol tidak bocor keluar, tinggi panel tetap = meja tidak loncat */
+#ctl.wait{pointer-events:none;opacity:.55}
+.row{display:flex;gap:10px;margin-top:10px;align-items:center}
+.row .btn.big{flex:1.5}
+.q{gap:6px}
+.q button{flex:1;padding:7px 0;border:1.5px solid #f1e7cf55;background:none;font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.q button:active{background:#f1e7cf22}
+input[type=range]{-webkit-appearance:none;appearance:none;flex:1.4;min-width:0;height:28px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:var(--paper-d);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-11px;border-radius:50%;border:2px solid var(--ink);background:repeating-conic-gradient(var(--gold) 0 20deg,#f4ecd8 20deg 40deg)}
+input[type=range]::-moz-range-track{height:4px;background:var(--paper-d)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;border:2px solid var(--ink);background:var(--gold)}
+#toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:var(--red);color:var(--paper);padding:9px 14px;font-family:var(--mono);font-size:12px;letter-spacing:.06em;border:2px solid var(--ink);box-shadow:3px 3px 0 #000;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9}
+#toast.on{opacity:1}
+#toast.good{background:#2f7a5c}
+
+@media(max-width:420px){ /* HP sempit: kursi dan kartu board sedikit lebih kecil supaya meja 9 orang tidak saling menimpa */
+  :root{--sw:84px}
+  .card{width:38px;height:54px}.card b{font-size:15px}.card i{top:19px;font-size:12px}.card::after{font-size:26px}
+}
+@media(min-width:700px){
+  :root{--sw:124px}
+  #top{min-height:86px}
+  #dealer{width:140px;bottom:-26px}
+  .card{width:56px;height:80px}.card b{font-size:22px}.card i{top:28px;font-size:17px}.card::after{font-size:40px}
+  .seat .card{width:32px;height:46px}.seat .card b{font-size:14px}.seat .card i{top:18px;font-size:12px}
+  #mine .card{width:72px;height:104px}#mine .card b{font-size:28px}#mine .card i{top:36px;font-size:21px}#mine .card::after{font-size:52px}
+  .nm{font-size:14px}.ch{font-size:13px}
+  /* layar lebar: kartu + info di kiri, kontrol di kanan (meja jadi lebih tinggi) */
+  #panel{display:grid;grid-template-columns:300px 1fr;gap:24px;align-items:center}
+  #ctl .row:first-child{margin-top:0}
+}
+@media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;animation-delay:0s!important}}
+</style>
+</head>
+<body>
+<div id="join">
+  <div class="ticket">
+    <div class="kicker">Malam poker · bareng teman</div>
+    <h1>Meja<br><em>Hold'em</em></h1>
+    <div class="suits"><span>&#9824;&#xFE0E;</span><span class="r">&#9829;&#xFE0E;</span><span class="r">&#9830;&#xFE0E;</span><span>&#9827;&#xFE0E;</span></div>
+    <label for="nm">Nama panggilan</label>
+    <input id="nm" maxlength="12" placeholder="mis. Bimo" autocomplete="off">
+    <label for="rm">Kode meja · bagikan ke teman</label>
+    <input id="rm" maxlength="16" autocomplete="off" autocapitalize="off" spellcheck="false">
+    <button class="btn" id="go">Duduk di meja &rarr;</button>
+    <div class="fine">1000 chips · blind 10/20 · maks 9 orang</div>
+  </div>
+</div>
+<div id="game" hidden>
+  <div id="top">
+    <span id="info"></span>
+    <svg id="dealer" viewBox="0 0 120 96" role="img" aria-label="Dealer">
+    <defs>
+      <linearGradient id="dl-skin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7d2b8"/><stop offset="1" stop-color="#e3aa8b"/></linearGradient>
+      <linearGradient id="dl-hair" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a2a1a"/><stop offset=".5" stop-color="#34140e"/><stop offset="1" stop-color="#1a0a07"/></linearGradient>
+      <linearGradient id="dl-satin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a3a46"/><stop offset=".5" stop-color="#101016"/><stop offset="1" stop-color="#22222c"/></linearGradient>
+      <linearGradient id="dl-lip" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dc3b38"/><stop offset="1" stop-color="#9c1c25"/></linearGradient>
+      <radialGradient id="dl-iris" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#8a5a2a"/><stop offset="1" stop-color="#2b1408"/></radialGradient>
+    </defs>
+    <!-- dealer perempuan: ilustrasi orisinal, berdiri di balik meja -->
+    <g class="body">
+      <path class="hairB" d="M36 42C29 20 44 3 62 3C82 3 93 22 86 46C84 60 90 74 96 88C84 86 76 76 74 64L46 64C44 76 36 86 24 88C30 74 38 60 36 42Z" fill="url(#dl-hair)"/>
+      <path d="M53 47H67V66C64 70 56 70 53 66Z" fill="#e0a588"/>
+      <path d="M12 96C12 82 26 73 42 69C49 67 50 62 53 58H67C70 62 71 67 78 69C94 73 108 82 108 96Z" fill="url(#dl-skin)"/>
+      <ellipse cx="60" cy="58.5" rx="7.5" ry="2.6" fill="#c98b6b" opacity=".2"/>
+      <path d="M18 96C19 84 31 78 46 79C52 80 56 83.5 60 83.5C64 83.5 68 80 74 79C89 78 101 84 102 96Z" fill="url(#dl-satin)"/>
+      <path d="M20 88C23 82 33 78.5 46 79C52 80 56 83.5 60 83.5C64 83.5 68 80 74 79C87 78.5 97 82 100 88" fill="none" stroke="#e0a82e" stroke-width=".9"/>
+      <path d="M30 92C38 86 48 85 55 87" fill="none" stroke="#fff" stroke-opacity=".08" stroke-width="1.2" stroke-linecap="round"/>
+      <path d="M52.8 59.5C55 66 65 66 67.2 59.5" fill="none" stroke="#e0a82e" stroke-width=".8"/>
+      <path d="M60 64.6L62.1 67.4L60 70.2L57.9 67.4Z" fill="#c8402a" stroke="#e0a82e" stroke-width=".7"/>
+      <g class="head">
+        <path d="M45 32C45 20 52 13 60 13C68 13 75 20 75 32C75 44 69 54.5 60 55.5C51 54.5 45 44 45 32Z" fill="url(#dl-skin)"/>
+        <path d="M71.5 26C75 37 71 49 62 54.4C70.5 52 76.2 42 75 29Z" fill="#c98b6b" opacity=".22"/>
+        <circle cx="49.5" cy="42.5" r="3.3" fill="#e5806f" opacity=".28"/><circle cx="70.5" cy="42.5" r="3.3" fill="#e5806f" opacity=".28"/>
+        <path d="M47.2 31.6C50.4 29 55 29 58.2 30.8M72.8 31.6C69.6 29 65 29 61.8 30.8" fill="none" stroke="#2a120d" stroke-width="1.3" stroke-linecap="round"/>
+        <g class="wkL"><g class="eyeL">
+          <path d="M48.5 35.8C50.5 33 55.8 33 58 35.6C55.6 38.2 50.6 38.2 48.5 35.8Z" fill="#fff"/>
+          <circle cx="53.4" cy="35.6" r="2.35" fill="url(#dl-iris)"/><circle cx="53.4" cy="35.6" r="1.05" fill="#120808"/><circle cx="54.2" cy="34.7" r=".65" fill="#fff"/>
+          <path d="M47.8 35.9C50 32.6 55.8 32.4 58.4 35.3" fill="none" stroke="#140808" stroke-width="1.05" stroke-linecap="round"/>
+          <path d="M48.2 35.7L46.5 34.5M49.3 34.5L48 33.2" stroke="#140808" stroke-width=".55" stroke-linecap="round"/>
+        </g></g>
+        <g class="wkR"><g class="eyeR">
+          <path d="M71.5 35.8C69.5 33 64.2 33 62 35.6C64.4 38.2 69.4 38.2 71.5 35.8Z" fill="#fff"/>
+          <circle cx="66.6" cy="35.6" r="2.35" fill="url(#dl-iris)"/><circle cx="66.6" cy="35.6" r="1.05" fill="#120808"/><circle cx="67.4" cy="34.7" r=".65" fill="#fff"/>
+          <path d="M72.2 35.9C70 32.6 64.2 32.4 61.6 35.3" fill="none" stroke="#140808" stroke-width="1.05" stroke-linecap="round"/>
+          <path d="M71.8 35.7L73.5 34.5M70.7 34.5L72 33.2" stroke="#140808" stroke-width=".55" stroke-linecap="round"/>
+        </g></g>
+        <path d="M60.5 39.6C59.9 41.8 59.4 43 60.2 43.6C60.9 43.5 61.4 43.2 61.4 42.8" fill="none" stroke="#c98b6b" stroke-width=".75" stroke-linecap="round"/>
+        <g class="lips">
+          <path d="M54.4 48.4C56.4 46.6 58.6 46.8 60 47.8C61.4 46.8 63.6 46.6 65.6 48.4C64 52.2 56 52.2 54.4 48.4Z" fill="url(#dl-lip)"/>
+          <path d="M54.9 48.5C57.6 49.5 62.4 49.5 65.1 48.5" fill="none" stroke="#6e0f16" stroke-width=".5"/>
+          <ellipse cx="58.3" cy="50.3" rx="1.8" ry=".55" fill="#fff" opacity=".4"/>
+        </g>
+        <circle cx="65.8" cy="51.2" r=".5" fill="#3a1a12"/>
+        <path d="M43.4 37C42 19 52 8 63 8C75 8 81 19 78.6 35C76 26 70 18.4 60.6 18C52.4 18 46.4 26 43.4 37Z" fill="url(#dl-hair)"/>
+        <path d="M44.4 36C45 28.4 50 21.4 61 18C54 23.4 49.6 29 47.6 35.6C46.4 35.6 45.2 35.8 44.4 36Z" fill="#2a100b"/>
+        <path d="M55 13.6C58.5 12 63 12 66.5 13.4" fill="none" stroke="#b5603f" stroke-opacity=".38" stroke-width="1" stroke-linecap="round"/>
+      </g>
+      <g class="hairF">
+        <path d="M43.6 37C41 50 40 62 33 74C29 81 25 86 22 91C35 89 41 79 45 67C47.4 58 47.6 47 48 39Z" fill="url(#dl-hair)"/>
+        <path d="M76.4 37C79 50 82 62 89 74C93 81 97 86 100 91C87 89 80 79 76 67C73.6 58 72.4 47 72 39Z" fill="url(#dl-hair)"/>
+        <path d="M40 60C38 68 34 76 28 84M80 60C82 68 86 76 92 84" fill="none" stroke="#b5603f" stroke-opacity=".45" stroke-width="1" stroke-linecap="round"/>
+      </g>
+      <circle cx="43.4" cy="43" r="2.2" fill="none" stroke="#e0a82e" stroke-width=".9"/><circle cx="76.6" cy="43" r="2.2" fill="none" stroke="#e0a82e" stroke-width=".9"/>
+    </g>
+    <g class="arm">
+      <path d="M89 75C89 71.5 99 71.5 99 75L97.6 91H90.4Z" fill="#e8b697"/>
+      <rect x="89" y="86.4" width="10" height="2.2" rx="1.1" fill="#e0a82e"/>
+      <circle cx="94" cy="95" r="5" fill="#f0c3a5"/>
+      <rect x="91" y="89" width="10" height="14" rx="1.5" fill="#c8402a" stroke="#f7f0dc" transform="rotate(12 96 96)"/>
+    </g>
+  </svg>
+    <span class="btns"><button id="snd" title="Nyalakan/matikan suara">Suara</button><button id="leave">Keluar</button></span>
+  </div>
+  <div id="table">
+    <div id="felt"></div><div id="seats"></div>
+    <div id="center"><div id="board"></div><div id="pot"></div><div id="win"></div></div>
+  </div>
+  <div id="panel"><div id="me"><div id="mine"></div><div id="msg"></div>
+    <button id="eye" type="button" aria-label="Sembunyikan kartu" aria-pressed="false" title="Sembunyikan kartu">
+      <svg class="open" viewBox="0 0 24 24" aria-hidden="true"><path d="M1.5 12S5.5 5 12 5s10.5 7 10.5 7-4 7-10.5 7S1.5 12 1.5 12Z"/><circle cx="12" cy="12" r="3"/></svg>
+      <svg class="off" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6.5 0 10.5 7 10.5 7a17.6 17.6 0 0 1-3.2 3.9"/><path d="M6.6 6.6C3.3 8.6 1.5 12 1.5 12S5.5 19 12 19c1.6 0 3-.4 4.3-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+    </button></div><div id="ctl"></div></div>
+</div>
+<div id="toast"></div>
+<script>
+const $ = id => document.getElementById(id), RK = '23456789TJQKA';
+const SU = ['♠︎', '♥︎', '♦︎', '♣︎'];
+const DEN = [[1000, '#e0a82e'], [500, '#6b3a63'], [100, '#1c1612'], [25, '#2f7a5c'], [5, '#c8402a'], [1, '#d8cdb4']];
+const PH = { waiting: 'Menunggu', preflop: 'Pre-flop', flop: 'Flop', turn: 'Turn', river: 'River', showdown: 'Showdown' };
+const ANIM = 900; // ms: lama animasi kartu terpanjang
+const esc = s => s.replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
+const set = (el, h) => { if (el._h !== h) { el.innerHTML = h; el._h = h; } }; // jangan bongkar DOM kalau isinya sama (animasi/drag tidak putus)
+
+// ---------- efek suara: disintesis dengan Web Audio (tanpa file audio) ----------
+const NB = new WeakMap();
+const noiseBuf = c => { if (!NB.has(c)) { const b = c.createBuffer(1, c.sampleRate, c.sampleRate), d = b.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; NB.set(c, b); } return NB.get(c); };
+// desis/gesekan: bising lewat filter dengan envelope cepat (f -> f2 = filter menyapu)
+function burst(c, out, t, dur, { type = 'bandpass', f = 3000, f2, q = 1, gain = .3 }) {
+  const s = c.createBufferSource(), fl = c.createBiquadFilter(), g = c.createGain();
+  s.buffer = noiseBuf(c); fl.type = type; fl.Q.value = q; fl.frequency.setValueAtTime(f, t);
+  if (f2) fl.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + Math.min(.008, dur / 3)); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  s.connect(fl); fl.connect(g); g.connect(out); s.start(t, Math.random() * .5); s.stop(t + dur + .02);
+}
+function tone(c, out, t, f, dur, { type = 'sine', gain = .2, f2 } = {}) {
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t + dur);
+  g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + dur);
+  o.connect(g); g.connect(out); o.start(t); o.stop(t + dur + .02);
+}
+// satu denting chip keramik: dua nada tinggi yang cepat hilang + bising tipis; nadanya diacak sedikit supaya tidak terdengar robotik
+const clink = (c, o, t, v = 1) => {
+  const p = .9 + Math.random() * .25;
+  tone(c, o, t, 2300 * p, .07, { gain: .09 * v, type: 'triangle' }); tone(c, o, t, 3700 * p, .05, { gain: .05 * v });
+  burst(c, o, t, .03, { type: 'highpass', f: 5500, gain: .12 * v });
+};
+const SND = {
+  deal: (c, o, t) => { burst(c, o, t, .1, { f: 4200, f2: 1800, q: 1.2, gain: .22 }); tone(c, o, t + .08, 170, .05, { gain: .1 }); }, // kartu meluncur di kain
+  flip: (c, o, t) => { burst(c, o, t, .05, { type: 'highpass', f: 2800, gain: .25 }); tone(c, o, t, 800, .03, { f2: 450, gain: .06, type: 'triangle' }); }, // kartu dibalik
+  chips: (c, o, t, n = 3) => { for (let i = 0; i < n; i++) clink(c, o, t + i * (.03 + Math.random() * .05), .6 + Math.random() * .5); }, // taruhan: makin besar makin banyak denting
+  sweep: (c, o, t) => { for (let i = 0; i < 6; i++) clink(c, o, t + i * .035, .5); burst(c, o, t, .25, { f: 2500, f2: 1200, gain: .08 }); }, // taruhan ditarik ke pot
+  knock: (c, o, t) => { for (const d of [0, .12]) { tone(c, o, t + d, 150, .07, { f2: 90, gain: .3 }); burst(c, o, t + d, .03, { type: 'lowpass', f: 900, gain: .2 }); } }, // check: ketuk meja dua kali
+  fold: (c, o, t) => burst(c, o, t, .17, { f: 3500, f2: 900, q: .8, gain: .2 }), // kartu dibuang
+  ding: (c, o, t) => { tone(c, o, t, 880, .5, { gain: .14 }); tone(c, o, t + .09, 1320, .55, { gain: .1 }); }, // giliranmu
+  tick: (c, o, t) => tone(c, o, t, 1500, .03, { type: 'square', gain: .05 }), // hitung mundur lima detik terakhir
+  allin: (c, o, t) => { SND.chips(c, o, t, 12); tone(c, o, t, 90, .25, { f2: 55, gain: .25 }); },
+  win: (c, o, t) => { SND.chips(c, o, t, 14); [523, 659, 784, 1047].forEach((f, i) => tone(c, o, t + .08 + i * .11, f, .45, { type: 'triangle', gain: .12 })); },
+};
+let AC, OUT, unlocked = false, muted = localStorage.getItem('mute') === '1';
+function unlock() { // browser baru mengizinkan suara setelah ada tap/ketikan pemain
+  unlocked = true;
+  if (!AC) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return; AC = new C(); OUT = AC.createGain(); OUT.gain.value = .8; OUT.connect(AC.destination); }
+  if (AC.state === 'suspended') AC.resume();
+}
+['pointerdown', 'keydown'].forEach(e => addEventListener(e, unlock, { passive: true }));
+const play = (k, ...a) => { if (muted || !unlocked || !AC) return; try { SND[k](AC, OUT, AC.currentTime + .01, ...a); } catch (e) { console.warn('suara gagal', e); } };
+const later = (ms, k, ...a) => setTimeout(() => play(k, ...a), Math.max(0, ms));
+
+// ---- kode meja: dari link undangan (#kode) atau meja terakhir yang dipakai ----
+const ROOM_RE = /^[a-z0-9-]{3,16}$/;
+const newRoom = () => Array.from({ length: 5 }, () => 'abcdefghjkmnpqrstuvwxyz23456789'[Math.random() * 31 | 0]).join('');
+const hashRoom = () => { const r = decodeURIComponent(location.hash.slice(1)).toLowerCase(); return ROOM_RE.test(r) ? r : ''; };
+let room = hashRoom() || localStorage.getItem('room') || '';
+let tok = room ? localStorage.getItem('tok:' + room) : null, S, ver = -1, polls = 0, pollT, endAt = 0, raiseTo = 0, rkey = '', wasMine = false, lastCtl = '';
+const anims = new Map(); // kunci kartu -> waktu mulai animasi (ms epoch, termasuk jeda antar kartu)
+let lastNo = -1, seenBoard = 0, prevCards = [], wasWin = false, prevS = null, tickSec = 0;
+
+// kartu; key menentukan animasinya: c = dibagi (terbang), b = board (terbang + balik), r = dibuka saat showdown (balik)
+const card = (c, key = '') => {
+  const a = anims.get(key), d = a === undefined ? 0 : a - Date.now(), live = a !== undefined && d > -ANIM;
+  const cls = !live ? '' : key[0] === 'r' ? ' reveal' : c < 0 ? ' fly' : ' fly flip';
+  const st = live ? ` style="animation-delay:${d / 1000}s"` : ''; // jeda negatif = lanjut dari tengah animasi kalau layar di-render ulang
+  return c < 0 ? `<div class="card back${cls}"${st}></div>`
+    : `<div class="card${[1, 2].includes(c / 13 | 0) ? ' r' : ''}${cls}"${st} data-s="${SU[c / 13 | 0]}"><b>${RK[c % 13].replace('T', '10')}</b><i>${SU[c / 13 | 0]}</i></div>`;
+};
+// tumpukan chip per denominasi (maks 6 keping per tumpukan supaya tidak melebar)
+const chips = n => { let h = ''; for (const [d, c] of DEN) { const k = Math.min(n / d | 0, 6); n %= d; if (k) h += `<span class="stk">${`<i class="chip" style="--c:${c}"></i>`.repeat(k)}</span>`; } return h; };
+const tagOf = (p, betting) => p.gone ? ['', 'keluar'] : p.sitOut ? ['', 'istirahat'] : !p.online ? ['', 'offline']
+  : p.allIn && p.inHand && betting ? ['red', 'all-in'] : p.last ? [/^(bet|raise)/.test(p.last) ? 'red' : '', p.last]
+  : p.inHand && p.folded ? ['', 'fold'] : !p.chips && !p.inHand ? ['', 'habis'] : null;
+const row3 = (p, mine, betting) => p.won ? `<span class="tag grn">+${p.won}</span>` : !mine && p.hand ? `<i class="hand">${p.hand}</i>`
+  : (t => t ? `<span class="tag ${t[0]}">${t[1]}</span>` : '')(tagOf(p, betting));
+
+const toast = (m, good) => { const t = $('toast'); t.textContent = m; t.classList.toggle('good', !!good); t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 2500); };
+// balasan aksi membawa state terbaru (r.s) sehingga layar pemain yang beraksi langsung berubah tanpa menunggu polling
+const api = (type, o = {}) => fetch('/api', { method: 'POST', body: JSON.stringify({ room, token: tok, type, ...o }) })
+  .then(r => r.json()).then(r => { if (r.s && tok) apply(r.v, r.s); if (r.error) toast(r.error); if (r.gone) toLobby(); return r; }).catch(() => toast('Koneksi ke server putus'));
+function copyLink() {
+  const url = location.origin + location.pathname + '#' + room;
+  if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => toast('Link undangan disalin', true), () => prompt('Salin link ini:', url));
+  else prompt('Salin link ini:', url);
+}
+// tombol dikunci sampai server membalas: tap dua kali tidak jadi dua aksi
+const act = async (type, amount) => { $('ctl').classList.add('wait'); const r = await api(type, { amount }); if (!r || r.error) $('ctl').classList.remove('wait'); };
+
+$('nm').value = localStorage.getItem('name') || '';
+$('rm').value = room || newRoom();
+$('nm').onkeydown = e => { if (e.key === 'Enter') $('go').click(); }; // jangan return false: itu membatalkan semua ketikan
+$('rm').onkeydown = $('nm').onkeydown;
+$('go').onclick = async () => {
+  const name = $('nm').value.trim(), rm = $('rm').value.trim().toLowerCase();
+  if (!ROOM_RE.test(rm)) return toast('Kode meja: 3-16 huruf/angka, tanpa spasi');
+  localStorage.setItem('name', name); room = rm; tok = null;
+  const r = await api('join', { name });
+  if (r && r.token) {
+    tok = r.token; localStorage.setItem('tok:' + room, tok); localStorage.setItem('room', room);
+    history.replaceState(null, '', '#' + room);
+    apply(r.v, r.s); connect();
+  }
+};
+$('leave').onclick = async () => {
+  if (!confirm('Keluar dari meja? Sisa chips kamu hangus.')) return;
+  await api('leave'); toLobby();
+};
+function toLobby() {
+  if (room) localStorage.removeItem('tok:' + room);
+  tok = null; S = null; prevS = null; ver = -1; lastNo = -1; anims.clear(); clearTimeout(pollT);
+  $('rm').value = room || newRoom(); $('game').hidden = true; $('join').hidden = false;
+}
+
+// ---- sinkronisasi: polling ~1 detik (Vercel tidak punya koneksi panjang); {same:true} kalau tidak ada perubahan ----
+function apply(v, s) {
+  if (v < ver) return; // balasan lama yang datang terlambat
+  ver = v; S = s; endAt = Date.now() + s.left;
+  $('join').hidden = true; $('game').hidden = false; render();
+}
+async function poll() {
+  clearTimeout(pollT);
+  if (!tok) return;
+  const my = tok;
+  let r = null;
+  try { r = await fetch(`/api?room=${room}&token=${tok}${++polls % 8 ? '&v=' + ver : ''}`, { cache: 'no-store' }).then(x => x.json()); } catch {}
+  if (tok !== my) return; // sudah keluar selagi menunggu balasan
+  if (r && r.gone) return toLobby();
+  if (r && r.s) apply(r.v, r.s);
+  pollT = setTimeout(poll, r ? 900 : 2500);
+}
+function connect() { ver = -1; polls = 0; poll(); }
+document.addEventListener('visibilitychange', () => { if (!document.hidden && tok) poll(); });
+if (tok) connect();
+onresize = () => S && render();
+
+// ---- kartu sendiri: tombol mata menyembunyikannya (aman dari yang mengintip); tahan kartu untuk mengintip sebentar ----
+let hideCards = localStorage.getItem('hide') === '1', peek = false, curMsg = '';
+const masked = () => hideCards && !peek;
+function drawMine() {
+  if (!S) return;
+  const P = S.players[S.me], m = masked();
+  set($('mine'), P.cards.length ? P.cards.map((c, j) => card(m ? -1 : c, 'c' + S.me + '.' + j)).join('') : '<div class="card empty"></div><div class="card empty"></div>');
+  // nama tangan (mis. "Straight") juga ikut disembunyikan, karena membocorkan kekuatan kartu
+  set($('msg'), (P.hand && !m ? `<div class="hn">${P.hand}</div>` : '') + `<div class="sub">${curMsg}</div>` + (m && P.cards.length ? '<div class="hint">tahan kartu untuk mengintip</div>' : ''));
+  $('eye').classList.toggle('on', hideCards);
+  $('eye').setAttribute('aria-pressed', hideCards);
+  $('eye').title = hideCards ? 'Tampilkan kartu' : 'Sembunyikan kartu';
+}
+$('eye').onclick = () => { hideCards = !hideCards; peek = false; localStorage.setItem('hide', hideCards ? '1' : '0'); drawMine(); };
+$('mine').addEventListener('pointerdown', e => { if (hideCards) { e.preventDefault(); peek = true; drawMine(); } });
+$('mine').addEventListener('contextmenu', e => { if (hideCards) e.preventDefault(); }); // tekan lama di Android jangan memunculkan menu
+['pointerup', 'pointercancel'].forEach(t => addEventListener(t, () => { if (peek) { peek = false; drawMine(); } })); // lepas di mana pun: tutup lagi
+
+function setR(v) {
+  const c = S.ctl; raiseTo = Math.max(c.minTo, Math.min(c.maxTo, Math.round(v)));
+  $('rs').value = raiseTo;
+  $('rb').textContent = raiseTo >= c.maxTo ? 'All-in ' + raiseTo : (c.bet ? 'Raise ke ' : 'Bet ') + raiseTo;
+}
+
+function controls(c, P) {
+  const key = S.phase + c.bet + c.minTo + S.board.length;
+  if (key !== rkey) { rkey = key; raiseTo = c.minTo; }
+  const f = x => Math.min(c.maxTo, Math.max(c.minTo, c.bet + Math.round((S.pot + c.call) * x))); // raise-to untuk x * pot
+  let h = `<div class="row"><button class="btn ghost" onclick="act('fold')">Fold</button>
+    <button class="btn green" onclick="act('${c.call ? 'call' : 'check'}')">${c.call ? 'Call ' + c.call + (c.call >= P.chips ? ' · all-in' : '') : 'Check'}</button></div>`;
+  if (c.raise) h += `<div class="row q">${[['Min', c.minTo], ['½ Pot', f(.5)], ['Pot', f(1)], ['All-in', c.maxTo]].map(([l, v]) => `<button onclick="setR(${v})">${l}</button>`).join('')}</div>
+    <div class="row"><input id="rs" type="range" min="${c.minTo}" max="${c.maxTo}" oninput="setR(+this.value)">
+    <button class="btn red big" id="rb" onclick="act('raise',raiseTo)"></button></div>`;
+  return h;
+}
+
+// kartu baru terbang dari posisi dealer: hitung jaraknya ke tujuan (pakai posisi layout, bukan posisi yang sedang beranimasi)
+function aim() {
+  const D = $('dealer').getBoundingClientRect(), ox = D.left + D.width / 2, oy = D.top + D.height * .62;
+  document.querySelectorAll('.fly').forEach(el => {
+    const P = el.offsetParent.getBoundingClientRect();
+    el.style.setProperty('--dx', ox - (P.left + el.offsetLeft + el.offsetWidth / 2) + 'px');
+    el.style.setProperty('--dy', oy - (P.top + el.offsetTop + el.offsetHeight / 2) + 'px');
+  });
+}
+function flick(n) { // dealer mengayun tangan sebanyak n kartu
+  const d = $('dealer'); d.style.setProperty('--n', n); d.classList.remove('deal'); void d.getBoundingClientRect(); d.classList.add('deal');
+  clearTimeout(flick.h); flick.h = setTimeout(() => d.classList.remove('deal'), n * 430 + 100);
+}
+
+function render() {
+  const { players: ps, me, phase } = S, n = ps.length, P = ps[me], betting = phase !== 'waiting' && phase !== 'showdown', now = Date.now();
+
+  // ---- jadwalkan animasi kartu dari perubahan state ----
+  let deals = 0;
+  if (lastNo < 0) seenBoard = S.board.length; // load pertama / reconnect: tanpa animasi
+  else {
+    if (S.no !== lastNo && betting) { // hand baru: bagi searah jarum jam mulai dari kiri dealer, kartu pertama lalu kedua
+      anims.clear(); seenBoard = 0; deals = 3;
+      ps.forEach((p, k) => p.cards.forEach((_, j) => { const d = (j * n + (k - S.dealer - 1 + n) % n) * 70; anims.set('c' + k + '.' + j, now + d); later(d, 'deal'); }));
+    }
+    if (S.board.length < seenBoard) seenBoard = 0;
+    for (let i = seenBoard; i < S.board.length; i++) { const d = (i - seenBoard) * 160; anims.set('b' + i, now + d); later(d, 'deal'); later(d + 430, 'flip'); deals = S.board.length === 3 ? 3 : 1; }
+    seenBoard = S.board.length;
+    ps.forEach((p, k) => { // kartu lawan yang tadinya tertutup kini terbuka (showdown)
+      const was = prevCards[k];
+      if (k !== me && was && was[0] === -1 && p.cards[0] >= 0) p.cards.forEach((_, j) => { anims.set('r' + k + '.' + j, now + j * 140); later(j * 140 + 270, 'flip'); });
+    });
+    // suara dari perubahan state: taruhan, check, fold, taruhan ditarik ke pot
+    if (prevS && prevS.players.length === n) {
+      ps.forEach((p, k) => {
+        const q = prevS.players[k], d = p.bet - q.bet;
+        if (d > 0) play(p.allIn && !q.allIn ? 'allin' : 'chips', Math.min(10, 2 + Math.ceil(d / 60)));
+        if (p.last === 'check' && q.last !== 'check') play('knock');
+        if (p.last === 'fold' && q.last !== 'fold') play('fold');
+      });
+      if (S.no === prevS.no && S.board.length > prevS.board.length) play('sweep');
+    }
+  }
+  lastNo = S.no; prevCards = ps.map(p => p.cards.slice());
+
+  $('info').innerHTML = `<b>${PH[phase]}</b> · ${S.sb}/${S.bb}<br><a onclick="copyLink()" title="Salin link undangan">#${room}</a>`;
+
+  // ---- panel bawah dulu (tingginya menentukan ukuran meja), baru kursi ----
+  const busy = betting && P.inHand && !P.folded;
+  let msg = '', h = '';
+  if (S.ctl) { msg = 'Giliran kamu'; h = controls(S.ctl, P); }
+  else if (P.gone) msg = 'Keluar setelah hand ini';
+  else if (P.sitOut) msg = 'Kamu istirahat';
+  else if (betting && !P.inHand) msg = 'Tunggu hand berikutnya';
+  else if (betting) msg = S.turn >= 0 ? 'Giliran ' + esc(ps[S.turn].name) + (P.folded ? ' · kamu fold' : '') : 'Membuka kartu…';
+  else if (phase === 'showdown') msg = 'Hand berikutnya sebentar lagi';
+  else msg = S.started ? 'Menunggu pemain lain' : n < 2 ? 'Menunggu teman gabung (min. 2) · ketuk #kode di kiri atas untuk menyalin link undangan'
+    : S.host ? 'Siap? Tekan mulai' : 'Menunggu ' + esc((ps.find(p => p.master) || {}).name || 'master') + ' (master meja) memulai game';
+  if (S.turn >= 0) msg += ' · <span id="tl"></span>';
+  if (phase === 'waiting' && !S.started && n > 1 && S.host) h += `<div class="row"><button class="btn gold" onclick="act('start')">Mulai game</button></div>`; // hanya master meja
+  if (P.sitOut) h += `<div class="row"><button class="btn green" onclick="act('sitin')">Duduk lagi</button></div>`;
+  if (!P.chips && !busy) h += `<div class="row"><button class="btn gold" onclick="act('rebuy')">Beli chips lagi (+${S.start})</button></div>`;
+  curMsg = msg; drawMine();
+  if (h !== lastCtl) { $('ctl').innerHTML = h; lastCtl = h; } // kontrol yang sama tidak dibongkar (slider yang sedang digeser tetap utuh)
+  $('ctl').classList.remove('wait');
+  if (S.ctl && S.ctl.raise) setR(raiseTo);
+
+  // ---- kursi melingkar; aku selalu di bawah, urutan giliran searah jarum jam ----
+  const W = $('table').clientWidth, H = $('table').clientHeight, sw = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sw'));
+  const rx = 50 - (sw / 2 + 4) * 100 / W, ry = 50 - (92 / 2 + 4) * 100 / H;
+  let seats = '', bets = '', sumBets = 0;
+  ps.forEach((p, k) => {
+    const th = 2 * Math.PI * ((k - me + n) % n) / n, x = 50 - rx * Math.sin(th), y = 50 + ry * Math.cos(th);
+    const dim = p.sitOut || !p.online || p.gone || (phase !== 'waiting' && (!p.inHand || p.folded));
+    const cs = k === me ? '' : p.cards.map((c, j) => card(c, anims.has('r' + k + '.' + j) ? 'r' + k + '.' + j : 'c' + k + '.' + j)).join('');
+    seats += `<div class="seat${k === me ? ' me' : ''}${k === S.turn ? ' turn' : ''}${dim ? ' dim' : ''}${p.won ? ' won' : ''}" style="left:${x}%;top:${y}%">
+      <div class="cards">${cs}</div>
+      <div class="plate">${k === S.dealer && phase !== 'waiting' ? '<span class="dealer">D</span>' : ''}
+        <div class="nm">${p.master ? '<span class="crown" title="Master meja">&#9819;&#xFE0E;</span>' : ''}${esc(p.name)}</div><div class="ch">${p.chips}</div><div class="r3">${row3(p, k === me, betting)}</div>
+        ${k === S.turn ? '<div class="tm"><b></b></div>' : ''}</div></div>`;
+    if (p.bet) { sumBets += p.bet; bets += `<div class="bet" style="left:${x + (50 - x) * .45}%;top:${y + (50 - y) * .45}%">${chips(p.bet)}<span>${p.bet}</span></div>`; }
+  });
+  set($('seats'), seats + bets);
+
+  set($('board'), [0, 1, 2, 3, 4].map(i => i < S.board.length ? card(S.board[i], 'b' + i) : '<div class="card empty"></div>').join(''));
+  set($('pot'), S.pot ? chips(S.pot - sumBets) + `<span class="lbl">Pot</span><span class="num">${S.pot}</span>` : '');
+  set($('win'), ps.filter(p => p.won).map(p => `<span class="stamp">Menang · ${esc(p.name)}<br><em>+${p.won}${p.hand ? ' · ' + p.hand : ''}</em></span>`).join(''));
+
+  aim();
+  if (deals) flick(deals);
+  const win = ps.some(p => p.won);
+  if (win && !wasWin) { $('dealer').classList.add('happy'); setTimeout(() => $('dealer').classList.remove('happy'), 3000); if (prevS) later(900, 'win'); }
+  wasWin = win;
+
+  const mine = S.turn === me;
+  if (mine && !wasMine) { if (prevS) play('ding'); if (navigator.vibrate) navigator.vibrate(200); }
+  wasMine = mine;
+  prevS = S;
+}
+
+setInterval(() => {
+  if (!S || S.turn < 0) return;
+  const left = Math.max(0, endAt - Date.now()), b = document.querySelector('.tm b'), t = $('tl');
+  if (b) b.style.width = left / S.ms * 100 + '%';
+  if (t) t.textContent = Math.ceil(left / 1000) + ' dtk';
+  if (S.turn === S.me && left > 0 && left <= 5000) { const sec = Math.ceil(left / 1000); if (sec !== tickSec) { tickSec = sec; play('tick'); } } else tickSec = 0; // 5 detik terakhir: tik tiap detik
+}, 250);
+
+$('snd').classList.toggle('off', muted);
+$('snd').onclick = () => { muted = !muted; localStorage.setItem('mute', muted ? '1' : '0'); $('snd').classList.toggle('off', muted); play('chips', 3); };
+</script>
+</body>
+</html>
